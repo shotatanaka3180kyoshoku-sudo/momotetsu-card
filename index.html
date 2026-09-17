@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real 桃鉄 in 札幌市営地下鉄 - カード選択</title>
+  <style>
+    :root {
+      --bg-color: #fce4ec;
+      --card-front-bg: #ffffff;
+      --text-color: #333333;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 5px;
+      color: #880e4f;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #ad1457;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    /* 操作エリア */
+    .controls {
+      margin-bottom: 30px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #ec407a 0%, #d81b60 100%);
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(216, 27, 96, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #d81b60 0%, #c2185b 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(216, 27, 96, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    /* 横並びカードのコンテナ */
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      justify-content: center;
+      max-width: 900px;
+      width: 100%;
+      padding: 10px;
+    }
+
+    /* 3Dパースペクティブ（親要素） */
+    .card-wrapper {
+      width: 120px;
+      height: 170px;
+      perspective: 1000px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    /* カード本体（回転・拡大のアニメーション対象） */
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.8s ease;
+      transform-style: preserve-3d;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ホバー時に少し浮き上がる3D効果 */
+    .card-wrapper:not(.disabled):hover .card-inner {
+      transform: translateY(-8px) rotateX(10deg) rotateY(-5deg);
+      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    /* 選択された時の3D回転＆拡大アニメーション */
+    .card-wrapper.flipped .card-inner {
+      transform: rotateY(180deg) translateZ(30px) scale(1.1);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+
+    /* 未選択カードの非アクティブ状態 */
+    .card-wrapper.disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+      filter: grayscale(40%);
+    }
+
+    .card-wrapper.disabled .card-inner {
+      transform: none !important;
+    }
+
+    /* 表と裏の共通設定 */
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    /* 裏面（画像デザイン） */
+    .card-back {
+      background-color: #fff;
+      border: 2px solid #ad1457;
+    }
+
+    .card-back img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 表面（結果テキスト） */
+    .card-front {
+      background: linear-gradient(135deg, #ffffff 0%, #fff5f8 100%);
+      color: #880e4f;
+      border: 3px solid #ec407a;
+      transform: rotateY(180deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      font-weight: bold;
+      font-size: 1rem;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Real 桃鉄 in 札幌市営地下鉄</h1>
+  <div class="subtitle" id="instruction">好きなカードを選んでめくってください！</div>
+
+  <div class="controls">
+    <button onclick="initDeck()">シャッフルしてやり直す</button>
+  </div>
+
+  <!-- カード配置エリア -->
+  <div class="card-container" id="card-container"></div>
+
+  <script>
+    // 添付画像のファイル名
+    const cardBackImagePath = "桃鉄@札幌市営地下鉄.jpg";
+
+    // 10種類のカードリスト（各1枚ずつ）
+    const cardDataList = [
+      "急行カード",
+      "千載一隅カード",
+      "刀狩りカード",
+      "終点カード",
+      "スペシャルカード",
+      "パトカード",
+      "虎につばさカード",
+      "サミットカード",
+      "徳政令カード",
+      "スターカード"
+    ];
+
+    let currentCards = [];
+    let isSelected = false;
+
+    // 配列のランダムシャッフル（フィッシャー–イェーツ）
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // デッキ初期化・カード描画
+    function initDeck() {
+      isSelected = false;
+      document.getElementById("instruction").innerText = "好きなカードを選んでめくってください！";
+      
+      currentCards = shuffle(cardDataList);
+
+      const container = document.getElementById("card-container");
+      container.innerHTML = "";
+
+      currentCards.forEach((text) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "card-wrapper";
+        
+        wrapper.innerHTML = `
+          <div class="card-inner">
+            <div class="card-back">
+              <img src="${cardBackImagePath}" alt="Real 桃鉄 in 札幌市営地下鉄">
+            </div>
+            <div class="card-front">${text}</div>
+          </div>
+        `;
+
+        wrapper.addEventListener("click", () => selectCard(wrapper));
+        container.appendChild(wrapper);
+      });
+    }
+
+    // カード選択処理
+    function selectCard(selectedWrapper) {
+      if (isSelected || selectedWrapper.classList.contains("flipped")) return;
+
+      isSelected = true;
+      selectedWrapper.classList.add("flipped");
+
+      // 選んだカード以外をグレーアウトして選択不可に
+      const allCards = document.querySelectorAll(".card-wrapper");
+      allCards.forEach(card => {
+        if (card !== selectedWrapper) {
+          card.classList.add("disabled");
+        }
+      });
+
+      document.getElementById("instruction").innerText = "カードが開かれました！";
+    }
+
+    // 初回表示
+    initDeck();
+  </script>
+
+</body>
+</html>
