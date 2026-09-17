@@ -66,27 +66,33 @@
       transform: translateY(0);
     }
 
-    /* 横並びカードのコンテナ */
+    /* 5列×2行固定のグリッドレイアウト */
     .card-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 18px;
-      justify-content: center;
-      max-width: 900px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr); /* 5列 */
+      gap: 15px;
+      max-width: 750px;
       width: 100%;
       padding: 10px;
+      box-sizing: border-box;
+    }
+
+    /* 画面が狭いスマホ等の対応 */
+    @media (max-width: 600px) {
+      .card-container {
+        gap: 8px;
+      }
     }
 
     /* 3Dパースペクティブ（親要素） */
     .card-wrapper {
-      width: 120px;
-      height: 170px;
+      aspect-ratio: 12 / 17; /* カードの縦横比を維持 */
       perspective: 1000px;
       cursor: pointer;
       position: relative;
     }
 
-    /* カード本体（回転・拡大のアニメーション対象） */
+    /* カード本体 */
     .card-inner {
       position: relative;
       width: 100%;
@@ -98,20 +104,24 @@
       box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     }
 
-    /* ホバー時に少し浮き上がる3D効果 */
-    .card-wrapper:not(.disabled):hover .card-inner {
+    /* 未めくりのホバー効果 */
+    .card-wrapper:not(.disabled):not(.flipped):hover .card-inner {
       transform: translateY(-8px) rotateX(10deg) rotateY(-5deg);
       box-shadow: 0 12px 20px rgba(0, 0, 0, 0.25);
     }
 
-    /* 選択された時の3D回転＆拡大アニメーション */
+    /* めくられた状態 */
+    .card-wrapper.flipped {
+      cursor: default;
+    }
+
     .card-wrapper.flipped .card-inner {
-      transform: rotateY(180deg) translateZ(30px) scale(1.1);
+      transform: rotateY(180deg) translateZ(30px) scale(1.08);
       box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
       z-index: 10;
     }
 
-    /* 未選択カードの非アクティブ状態 */
+    /* 選ばれなかったカードの非アクティブ状態 */
     .card-wrapper.disabled {
       cursor: not-allowed;
       opacity: 0.4;
@@ -156,11 +166,12 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12px;
+      padding: 8px;
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 0.95rem;
       word-break: break-word;
-      line-height: 1.4;
+      line-height: 1.3;
+      text-align: center;
     }
   </style>
 </head>
@@ -173,31 +184,31 @@
     <button onclick="initDeck()">シャッフルしてやり直す</button>
   </div>
 
-  <!-- カード配置エリア -->
+  <!-- カード配置エリア（5×2） -->
   <div class="card-container" id="card-container"></div>
 
   <script>
-    // 添付画像のファイル名
-    const cardBackImagePath = "桃鉄@札幌市営地下鉄.jpg";
+    // 画像ファイル名（英数字推奨）
+    const cardBackImagePath = "card.jpg";
 
-    // 10種類のカードリスト（各1枚ずつ）
+    // 10種類のカードリスト（<br>で2行表示に変更）
     const cardDataList = [
-      "急行カード",
-      "千載一隅カード",
-      "刀狩りカード",
-      "終点カード",
-      "スペシャルカード",
-      "パトカード",
-      "虎につばさカード",
-      "サミットカード",
-      "徳政令カード",
-      "スターカード"
+      "急行<br>カード",
+      "千載一隅<br>カード",
+      "刀狩り<br>カード",
+      "終点<br>カード",
+      "スペシャル<br>カード",
+      "パト<br>カード",
+      "虎につばさ<br>カード",
+      "サミット<br>カード",
+      "徳政令<br>カード",
+      "スター<br>カード"
     ];
 
     let currentCards = [];
     let isSelected = false;
 
-    // 配列のランダムシャッフル（フィッシャー–イェーツ）
+    // 配列のランダムシャッフル
     function shuffle(array) {
       const arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -242,7 +253,7 @@
       isSelected = true;
       selectedWrapper.classList.add("flipped");
 
-      // 選んだカード以外をグレーアウトして選択不可に
+      // 選んだカード以外を無効化
       const allCards = document.querySelectorAll(".card-wrapper");
       allCards.forEach(card => {
         if (card !== selectedWrapper) {
